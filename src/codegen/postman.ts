@@ -244,6 +244,7 @@ function processMethod(
     const resolvedPath = path.posix.join(basePath, subPath);
     const { cleanPath, variables } = cleanUrlPath(resolvedPath);
     const urlParts = cleanPath.split("/").filter((p) => p.length > 0);
+    const rawPath = cleanPath.startsWith("/") ? cleanPath.substring(1) : cleanPath;
 
     const postmanRequest: PostmanRequest = {
       method: httpMethod,
@@ -255,7 +256,7 @@ function processMethod(
         },
       ],
       url: {
-        raw: `{{baseUrl}}/${cleanPath}`,
+        raw: `{{baseUrl}}/${rawPath}`,
         host: ["{{baseUrl}}"],
         path: urlParts,
       },
