@@ -1,5 +1,5 @@
 {
-  "name": "sdkkit",
+  "name": "@dev-amr/sdkkit",
   "version": "0.1.0",
   "description": "Build type-safe REST SDKs for React & React Native with built-in auth management, React Query hooks, and Postman generation.",
   "license": "MIT",
