@@ -32,14 +32,11 @@ npm install @dev-amr/sdkkit axios react @tanstack/react-query
 
 ## 🛠️ Step-by-Step SDK Construction
 
-### Step 1: Define API Services
-
-Create microservices that extend `BaseService`. You can co-locate API calls and TanStack Query hooks in the same class:
+Create microservices that extend `BaseService`. With `sdkkit`, you only define standard HTTP fetch methods—no React Query boilerplate, key management, or hook setup is required inside your service classes:
 
 ```typescript
 // services/VehiclesService.ts
 import { BaseService, type ApiResponse } from "@dev-amr/sdkkit";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export interface Vehicle {
   id: string;
@@ -67,25 +64,6 @@ export class VehiclesService extends BaseService {
 
   public async create(data: CreateVehicleDto): Promise<ApiResponse<Vehicle>> {
     return this.http.post<ApiResponse<Vehicle>>(this.url(), data);
-  }
-
-  // --- TanStack Query Integration ---
-
-  public useQueryMy() {
-    return useQuery({
-      queryKey: ["vehicles", "my"],
-      queryFn: () => this.getMyVehicles(),
-    });
-  }
-
-  public useCreateMutation() {
-    const queryClient = useQueryClient();
-    return useMutation({
-      mutationFn: (data: CreateVehicleDto) => this.create(data),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-      },
-    });
   }
 }
 ```
@@ -183,8 +161,18 @@ import { useSDK } from "../sdk";
 
 export function MainScreen() {
   const sdk = useSDK();
-  const { data: response, isLoading } = sdk.vehicles.useQueryMy();
-  const createVehicle = sdk.vehicles.useCreateMutation();
+  
+  // 1. Fetching data (fully typed parameters & return values)
+  // Behind the scenes, queryKey is automatically managed as ['vehicles', 'getMyVehicles']
+  const { data: response, isLoading } = sdk.vehicles.getMyVehicles.useQuery();
+
+  // 2. Mutations
+  const createVehicle = sdk.vehicles.create.useMutation({
+    onSuccess: () => {
+      // 3. Cache Invalidation using the method reference directly—no magic strings!
+      sdk.vehicles.getMyVehicles.invalidate();
+    },
+  });
 
   if (isLoading) return <p>Loading...</p>;
 

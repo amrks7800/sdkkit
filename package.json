@@ -1,6 +1,6 @@
 {
   "name": "@dev-amr/sdkkit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Build type-safe REST SDKs for React & React Native with built-in auth management, React Query hooks, and Postman generation.",
   "license": "MIT",
   "type": "module",
@@ -49,6 +49,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
@@ -58,13 +59,17 @@
   },
   "devDependencies": {
     "@tanstack/react-query": "^5.80.7",
+    "@testing-library/react": "^16.3.2",
+    "@types/jsdom": "^28.0.3",
     "@types/node": "^26.1.0",
     "@types/react": "^19.1.8",
     "axios": "^1.9.0",
+    "jsdom": "^29.1.1",
     "react": "^19.1.0",
     "ts-morph": "^25.0.1",
     "tsup": "^8.5.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "ts-morph": "^25.0.1"
