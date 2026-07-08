@@ -5,6 +5,7 @@ import type { HttpClient } from "./client";
  * All feature-specific services must extend this class.
  */
 export abstract class BaseService {
+  public readonly $isService = true;
   protected readonly http: HttpClient;
   protected abstract readonly basePath: string;
 
