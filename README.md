@@ -25,7 +25,7 @@ It bundles the best patterns of HTTP clients, storage abstractions, React contex
 Install `sdkkit` alongside its peer dependencies:
 
 ```bash
-npm install sdkkit axios react @tanstack/react-query
+npm install @dev-amr/sdkkit axios react @tanstack/react-query
 ```
 
 ---
@@ -38,7 +38,7 @@ Create microservices that extend `BaseService`. You can co-locate API calls and 
 
 ```typescript
 // services/VehiclesService.ts
-import { BaseService, type ApiResponse } from "sdkkit";
+import { BaseService, type ApiResponse } from "@dev-amr/sdkkit";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export interface Vehicle {
@@ -96,8 +96,8 @@ Assemble the SDK using the `createSDK` factory. This automatically creates an in
 
 ```typescript
 // sdk.ts
-import { createSDK, TokenManager } from "sdkkit";
-import { createSDKProvider } from "sdkkit/react";
+import { createSDK, TokenManager } from "@dev-amr/sdkkit";
+import { createSDKProvider } from "@dev-amr/sdkkit/react";
 import { VehiclesService } from "./services/VehiclesService";
 import AsyncStorage from "@react-native-async-storage/async-storage"; // or localStorage in web
 
@@ -137,7 +137,7 @@ Mobile platforms do not have automatic cookie managers. Better Auth provides an 
 Configure the SDK using a dynamic async `headers` resolver:
 
 ```typescript
-import { createSDK } from "sdkkit";
+import { createSDK } from "@dev-amr/sdkkit";
 import { authClient } from "./auth-client"; // Your Better Auth mobile client
 
 export const sdk = createSDK({
