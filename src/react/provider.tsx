@@ -43,7 +43,8 @@ export interface SDKProviderResult<T> {
  */
 export function wrapServiceWithHooks<T extends BaseService>(
   serviceKey: string,
-  serviceInstance: T
+  serviceInstance: T,
+  queryClient?: QueryClient
 ): EnhancedService<T> {
   return new Proxy(serviceInstance, {
     get(target, propKey) {
@@ -117,7 +118,17 @@ export function wrapServiceWithHooks<T extends BaseService>(
           },
 
           invalidate(args?: unknown) {
-            const queryClient = useQueryClient();
+            let client = queryClient;
+            if (!client) {
+              try {
+                client = useQueryClient();
+              } catch (e) {
+                // Ignore
+              }
+            }
+            if (!client) {
+              throw new Error("No QueryClient found. Make sure you are using SDKProvider or passing queryClient to enhanceSDK.");
+            }
             const queryKey: unknown[] = [serviceKey, propKey];
             if (args !== undefined) {
               if (Array.isArray(args)) {
@@ -126,7 +137,7 @@ export function wrapServiceWithHooks<T extends BaseService>(
                 queryKey.push(args);
               }
             }
-            return queryClient.invalidateQueries({ queryKey });
+            return client.invalidateQueries({ queryKey });
           },
         }
       );
@@ -139,7 +150,7 @@ export function wrapServiceWithHooks<T extends BaseService>(
 /**
  * Recursively enhances an instantiated SDK, wrapping all of its services (BaseService subclasses) with React Query hooks.
  */
-export function enhanceSDK<T>(sdk: T): EnhancedSDK<T> {
+export function enhanceSDK<T>(sdk: T, queryClient?: QueryClient): EnhancedSDK<T> {
   const serviceCache = new Map<string | symbol, unknown>();
 
   return new Proxy(sdk as Record<string | symbol, unknown>, {
@@ -147,7 +158,7 @@ export function enhanceSDK<T>(sdk: T): EnhancedSDK<T> {
       const value = Reflect.get(target, key);
       if (value && typeof value === "object" && (value instanceof BaseService || (value as Record<string, unknown>).$isService === true)) {
         if (!serviceCache.has(key)) {
-          serviceCache.set(key, wrapServiceWithHooks(key as string, value as BaseService));
+          serviceCache.set(key, wrapServiceWithHooks(key as string, value as BaseService, queryClient));
         }
         return serviceCache.get(key);
       }
@@ -163,35 +174,64 @@ export function enhanceSDK<T>(sdk: T): EnhancedSDK<T> {
 export function createSDKProvider<T>(): SDKProviderResult<T> {
   const SDKContext = React.createContext<EnhancedSDK<T> | null>(null);
 
+  const SDKProviderWithClient: React.FC<Omit<SDKProviderProps<T>, "withQueryClient">> = ({
+    sdk,
+    setup,
+    children,
+  }) => {
+    const [queryClient] = React.useState(() => new QueryClient());
+    const instance = React.useMemo(() => {
+      const enhancedSdk = enhanceSDK(sdk, queryClient);
+      if (setup) {
+        setup(enhancedSdk);
+      }
+      return enhancedSdk;
+    }, [sdk, setup, queryClient]);
+
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SDKContext.Provider value={instance}>{children}</SDKContext.Provider>
+      </QueryClientProvider>
+    );
+  };
+
+  const SDKProviderWithoutClient: React.FC<Omit<SDKProviderProps<T>, "withQueryClient">> = ({
+    sdk,
+    setup,
+    children,
+  }) => {
+    const queryClient = useQueryClient();
+    const instance = React.useMemo(() => {
+      const enhancedSdk = enhanceSDK(sdk, queryClient);
+      if (setup) {
+        setup(enhancedSdk);
+      }
+      return enhancedSdk;
+    }, [sdk, setup, queryClient]);
+
+    return (
+      <SDKContext.Provider value={instance}>{children}</SDKContext.Provider>
+    );
+  };
+
   const SDKProvider: React.FC<SDKProviderProps<T>> = ({
     sdk,
     setup,
     withQueryClient = true,
     children,
   }) => {
-    // Memoize the initialization to run setup only when dependencies change
-    const instance = React.useMemo(() => {
-      const enhancedSdk = enhanceSDK(sdk);
-      if (setup) {
-        setup(enhancedSdk);
-      }
-      return enhancedSdk;
-    }, [sdk, setup]);
-
-    // Create a stable QueryClient instance for React Query integration
-    const [queryClient] = React.useState(() => new QueryClient());
-
-    const content = (
-      <SDKContext.Provider value={instance}>{children}</SDKContext.Provider>
-    );
-
     if (withQueryClient) {
       return (
-        <QueryClientProvider client={queryClient}>{content}</QueryClientProvider>
+        <SDKProviderWithClient sdk={sdk} setup={setup}>
+          {children}
+        </SDKProviderWithClient>
       );
     }
-
-    return content;
+    return (
+      <SDKProviderWithoutClient sdk={sdk} setup={setup}>
+        {children}
+      </SDKProviderWithoutClient>
+    );
   };
 
   const useSDK = (): EnhancedSDK<T> => {

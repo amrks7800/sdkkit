@@ -15,7 +15,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createSDK } from "../factory/create-sdk";
 import { BaseService } from "../core/service";
-import { enhanceSDK } from "./provider";
+import { enhanceSDK, createSDKProvider } from "./provider";
 
 // Mock Service for Testing
 class MockProductsService extends BaseService {
@@ -98,5 +98,43 @@ describe("Proxy-Based Auto-Hooks", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual({ id: "2", name: "New Product Name" });
+  });
+
+  it("should invalidate query successfully", async () => {
+    const queryClient = new QueryClient();
+    const enhancedSdk = enhanceSDK(sdk, queryClient);
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => enhancedSdk.products.getMyProducts.useQuery(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    // Call invalidate and check if it successfully invalidates or at least doesn't throw
+    expect(() => enhancedSdk.products.getMyProducts.invalidate()).not.toThrow();
+  });
+
+  it("should support invalidate through SDKProvider and useSDK", async () => {
+    const { SDKProvider, useSDK } = createSDKProvider<typeof sdk>();
+
+    let invalidateFn: Function | undefined;
+
+    const TestComponent = () => {
+      const enhancedSdk = useSDK();
+      invalidateFn = enhancedSdk.products.getMyProducts.invalidate;
+      
+      const { data } = enhancedSdk.products.getMyProducts.useQuery();
+      return <div>{data ? data[0].name : "loading"}</div>;
+    };
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <SDKProvider sdk={sdk}>{children}</SDKProvider>
+    );
+
+    renderHook(() => TestComponent(), { wrapper });
+
+    await waitFor(() => expect(invalidateFn).toBeDefined());
+    expect(() => invalidateFn!()).not.toThrow();
   });
 });
